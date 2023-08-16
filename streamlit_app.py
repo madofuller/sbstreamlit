@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import sklearn
+from sklearn import svm
+from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor
 
