@@ -4,49 +4,62 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 from sklearn.ensemble import GradientBoostingRegressor
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+import requests
+from bs4 import BeautifulSoup
 
 # Streamlit UI
-st.title('Baseball Betting Algorithm')
+st.title('Baseball Betting Model and Predictions')
 
-# Upload CSV file
-st.subheader('Upload CSV File')
-uploaded_file = st.file_uploader('Choose a CSV file', type=['csv'])
+# Load the data
+df = pd.read_csv("C:\\NBA_Betting\\ModelTrainingandTestingData.csv")
 
-# Load and process data
-if uploaded_file is not None:
-    st.write('Uploaded file:')
-    df = pd.read_csv(uploaded_file)
-    st.dataframe(df)
+# Display the first few rows and column names
+st.write("Sample data:")
+st.dataframe(df.head())
+st.write("Column names:")
+st.write(list(df.columns))
 
-    # Data preprocessing
-    X = df.drop(['TargetColumn'], axis=1)  # Adjust 'TargetColumn' to the actual target column name
-    y = df['TargetColumn']  # Adjust 'TargetColumn' to the actual target column name
+# Define features and target
+features = ['H_WIN%', 'H_PTS_PG', 'H_FGM_PG', ...]  # Your list of features
+target = 'Point Total'
 
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# ... (previous code remains the same)
 
-    # Model training
-    st.subheader('Train the Model')
-    n_estimators = st.number_input('Number of Estimators', min_value=1, value=100)
-    learning_rate = st.number_input('Learning Rate', min_value=0.001, max_value=1.0, value=0.1)
+# Load betting data
+Bet = pd.read_csv("C:\\NBA_Betting\\328Games.csv")
+Bet = Bet.iloc[:, 2:]
+Bet = Bet.dropna()
 
-    model = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate)
-    model.fit(X_train, y_train)
+# Web scraping using BeautifulSoup
+url = "https://www.baseball-reference.com/leagues/majors/2023-schedule.shtml"
+response = requests.get(url)
+soup = BeautifulSoup(response.content, 'html.parser')
 
-    st.write('Model trained!')
+# Extract game data
+game_data = []
+for row in soup.select('table#schedule tbody tr'):
+    cols = row.find_all('td')
+    if len(cols) >= 5:
+        date = cols[0].get_text()
+        home_team = cols[3].get_text()
+        away_team = cols[2].get_text()
+        game_data.append({'Date': date, 'HomeTeam': home_team, 'AwayTeam': away_team})
 
-    # Model evaluation
-    st.subheader('Evaluate the Model')
-    test_score = model.score(X_test, y_test)
-    st.write(f'Model R^2 Score on Test Data: {test_score:.2f}')
+# Create a DataFrame for scraped game data
+scraped_data = pd.DataFrame(game_data)
 
-    # Prediction
-    st.subheader('Make Predictions')
-    example_input = {}  # Create an example input dictionary based on your dataset
-    for column in X.columns:
-        example_input[column] = st.number_input(f'Enter {column}', value=0.0)
+# Merge with the betting data
+Bet = Bet.merge(scraped_data, how='left', on=['Date', 'HomeTeam', 'AwayTeam'])
 
-    prediction = model.predict(pd.DataFrame([example_input]))
-    st.write(f'Predicted Value: {prediction[0]:.2f}')
+# ... (continue with the rest of the script)
+
+# Predict using the trained model
+GB_predict_Tonight = GB.predict(Bet)
+
+# Create a DataFrame for tonight's totals
+Tonights_Totals = pd.DataFrame(GB_predict_Tonight, columns=['scores'])
+
+# Display the predicted scores
+st.write("Predicted scores for tonight:")
+st.dataframe(Tonights_Totals)
+
